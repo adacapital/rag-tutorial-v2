@@ -1,7 +1,18 @@
 import argparse
-from langchain.vectorstores.chroma import Chroma
+from langchain_chroma import Chroma  # Updated import
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama import OllamaLLM  # Updated import
+import openai
+from dotenv import load_dotenv
+import os
+
+# Load environment variables. Assumes that project contains .env file with API keys
+load_dotenv()
+
+# Set OpenAI API key
+openai.api_key = os.getenv("OPENAI_API_KEY")
+if not openai.api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 from get_embedding_function import get_embedding_function
 
@@ -40,7 +51,7 @@ def query_rag(query_text: str):
     prompt = prompt_template.format(context=context_text, question=query_text)
     # print(prompt)
 
-    model = Ollama(model="mistral")
+    model = OllamaLLM(model="llama3.1:8b")  # Updated class name
     response_text = model.invoke(prompt)
 
     sources = [doc.metadata.get("id", None) for doc, _score in results]
