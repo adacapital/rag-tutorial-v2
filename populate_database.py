@@ -2,7 +2,8 @@ import argparse
 import os
 import shutil
 from langchain.document_loaders.pdf import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from get_embedding_function import get_embedding_function
 from langchain_chroma import Chroma  # Updated import
@@ -20,6 +21,7 @@ if not openai.api_key:
 CHROMA_PATH = "chroma"
 DATA_PATH = "data"
 
+
 def main():
     # Check if the database should be cleared (using the --clear flag).
     parser = argparse.ArgumentParser()
@@ -34,9 +36,29 @@ def main():
     chunks = split_documents(documents)
     add_to_chroma(chunks)
 
+
 def load_documents():
-    document_loader = PyPDFDirectoryLoader(DATA_PATH)
-    return document_loader.load()
+    documents = []
+
+    # Load PDFs using PyPDFDirectoryLoader
+    pdf_loader = PyPDFDirectoryLoader(DATA_PATH)
+    pdf_documents = pdf_loader.load()
+    print(f"Loaded {len(pdf_documents)} PDF documents.")
+    for doc in pdf_documents:
+        print(f"Loaded PDF: {doc.metadata['source']}, Page: {doc.metadata.get('page')}")
+    documents.extend(pdf_documents)
+
+    # Load Markdown files using DirectoryLoader
+    md_loader = DirectoryLoader(DATA_PATH, glob="*.md")
+    md_documents = md_loader.load()
+    print(f"Loaded {len(md_documents)} Markdown documents.")
+    for doc in md_documents:
+        print(f"Loaded Markdown: {doc.metadata['source']}")  # Print Markdown file path
+    documents.extend(md_documents)
+
+    return documents
+
+
 
 def split_documents(documents: list[Document]):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -46,6 +68,7 @@ def split_documents(documents: list[Document]):
         is_separator_regex=False,
     )
     return text_splitter.split_documents(documents)
+
 
 def add_to_chroma(chunks: list[Document]):
     # Load the existing database.
@@ -74,6 +97,7 @@ def add_to_chroma(chunks: list[Document]):
     else:
         print("✅ No new documents to add")
 
+
 def calculate_chunk_ids(chunks):
     # This will create IDs like "data/monopoly.pdf:6:2"
     # Page Source : Page Number : Chunk Index
@@ -100,9 +124,11 @@ def calculate_chunk_ids(chunks):
 
     return chunks
 
+
 def clear_database():
     if os.path.exists(CHROMA_PATH):
         shutil.rmtree(CHROMA_PATH)
+
 
 if __name__ == "__main__":
     main()
